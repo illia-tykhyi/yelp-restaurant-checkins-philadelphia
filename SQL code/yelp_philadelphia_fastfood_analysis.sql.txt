@@ -1,0 +1,146 @@
+-- =======================
+-- Initial query
+-- =======================
+
+SELECT 
+rev.j ->> 'date' AS date,
+rev.j ->> 'business_id' AS business_id,
+bus.j ->> 'name' AS business_name,
+bus.j ->> 'latitude' AS business_lat,
+bus.j ->> 'longitude' AS business_long,
+bus.j->'attributes'->>'RestaurantsPriceRange2' AS business_price,
+(CASE WHEN STRPOS(bus.j->'attributes'->> 'BusinessParking', 'True') <> 0 THEN 'true'
+ ELSE 'false' END) AS business_park,
+(CASE
+        WHEN bus.j->'attributes'->>'WiFi' IN ('u''no''', '''no''', 'None') THEN 'No'
+        WHEN bus.j->'attributes'->>'WiFi' IN ('u''free''', '''free''') THEN 'Free'
+        WHEN bus.j->'attributes'->>'WiFi' IN ('u''paid''', '''paid''') THEN 'Paid'
+        ELSE NULL
+    END) AS business_wifi, 
+bus.j->'attributes'->> 'RestaurantsTakeOut' AS business_takeout,
+bus.j->'attributes'->> 'BusinessAcceptsCreditCards' AS business_creditcards,
+bus.j->'attributes'->> 'RestaurantsDelivery' AS business_delivery,
+rev.j ->> 'text' AS review,
+rev.j ->> 'user_id' AS user_id,
+rev.j ->> 'stars' AS stars,
+usr.j ->> 'review_count' AS user_review_count,
+usr.j ->> 'elite' AS elite_user,
+usr.j ->> 'friends' AS friends,
+usr.j ->> 'name' AS name,
+usr.j ->> 'fans' AS fans
+FROM
+public.review AS rev
+INNER JOIN
+public.business AS bus ON rev.j ->> 'business_id' = bus.j ->> 'business_id'
+INNER JOIN
+public.users AS usr ON rev.j ->> 'user_id' = usr.j ->> 'user_id'
+INNER JOIN
+public.checkin AS chn ON chn.j ->> 'business_id' = rev.j ->> 'business_id'
+WHERE rev.j ->> 'business_id' = bus.j ->> 'business_id' 
+AND bus.j ->> 'city' = 'Philadelphia'
+AND (bus.j->>'is_open')::int = 1
+AND bus.j->>'categories' LIKE '%Fast Food%' 
+;
+
+-- =======================
+-- Extract attributes
+-- =======================
+
+SELECT 
+COUNT(bus.j->'attributes'->> 'BusinessAcceptsCreditCards') AS business_creditcards,
+COUNT(bus.j->'attributes'->> 'BikeParking') AS business_bikeparking,
+COUNT(bus.j->'attributes'->> 'GoodForKids') AS business_goodforkids,
+COUNT(bus.j->'attributes'->> 'RestaurantsAttire') AS business_restaurantsattire,
+COUNT(bus.j->'attributes'->> 'NoiseLevel') AS business_noiselevel,
+COUNT(bus.j->'attributes'->> 'RestaurantsReservations') AS business_restaurantsreservations,
+COUNT(bus.j->'attributes'->> 'RestaurantsGoodForGroups') AS business_restaurantsgroups,
+COUNT(bus.j->'attributes'->> 'HasTV') AS business_hastv,
+COUNT(bus.j->'attributes'->> 'Alcohol') AS business_alcohol,
+COUNT(bus.j->'attributes'->> 'RestaurantsDelivery') AS business_delivery,
+COUNT(bus.j->'attributes'->> 'OutdoorSeating') AS business_outdoorseating,
+COUNT(bus.j->'attributes'->> 'Caters') AS business_caters,
+COUNT(bus.j->'attributes'->> 'Ambience') AS business_ambience,
+COUNT(bus.j->'attributes'->> 'RestaurantsTableServices') AS business_tableservice,
+COUNT(bus.j->'attributes'->> 'GoodForMeal') AS business_goodformeal,
+COUNT(bus.j->'attributes'->> 'AcceptsInsurance') AS business_acceptinsurance,
+COUNT(bus.j->'attributes'->> 'BusinessAcceptsBitcoin') AS business_acceptbitcoin,
+COUNT(bus.j->'attributes'->> 'DogsAllowed') AS business_dogallowed,
+COUNT(bus.j->'attributes'->> 'HappyHour') AS business_happyhour,
+COUNT(bus.j->'attributes'->> 'DriveThru') AS business_drivethru,
+COUNT(bus.j->'attributes'->> 'GoodForDancing') AS business_goodfordance,
+COUNT(bus.j->'attributes'->> 'CoatCheck') AS business_coatcheck,
+COUNT(bus.j->'attributes'->> 'Music') AS business_music,
+COUNT(bus.j->'attributes'->> 'Corkage') AS business_corkage,
+COUNT(bus.j->'attributes'->> 'BYOBCorkage') AS business_BYOBcorkage,
+COUNT(bus.j->'attributes'->> 'BYOB') AS business_BYOB,
+COUNT(bus.j->'attributes'->> 'AgesAllowed') AS business_agesallowed,
+COUNT(bus.j->'attributes'->> 'DietaryRestrictions') AS business_dietaryrestrictions,
+COUNT(bus.j->'attributes'->> 'RestaurantsCounterService') AS business_restaurantscounterservice,
+COUNT(bus.j->'attributes'->> 'WheelchairAccessible') AS business_wheelchair, --These 3 attributes are on the code above
+COUNT(bus.j->'attributes'->> 'ByAppointmentOnly') AS business_appointment,
+COUNT(bus.j->'attributes'->>'Open24Hours') AS business_24hours
+FROM public.business AS bus
+WHERE bus.j ->> 'city' = 'Philadelphia'
+AND (bus.j->>'is_open')::int = 1
+AND bus.j->>'categories' LIKE '%Fast Food%'; 
+Find and match check-in dates and review dates 
+SELECT chn_td.business_id, chn_td.chn_date, rev_td.rev_date
+FROM 
+(SELECT chn.j->>'business_id' AS business_id,
+ DATE(unnest(string_to_array(chn.j->>'date', ','))) AS chn_date
+ FROM public.checkin AS chn, public.business AS bus
+ WHERE chn.j->>'business_id' = bus.j->>'business_id' 
+ AND bus.j->>'city'='Philadelphia'
+ AND STRPOS(bus.j->>'categories', 'Restaurants') <> 0 
+ AND STRPOS(bus.j->>'categories', 'Fast Food') <> 0
+) AS chn_td --check in timestamp to date
+INNER JOIN
+(SELECT rev.j->>'business_id' AS business_id
+,DATE(unnest(string_to_array(rev.j->>'date', ','))) AS rev_date
+ FROM public.review AS rev, public.business AS bus
+ WHERE rev.j->>'business_id' = bus.j->>'business_id' 
+ AND bus.j->>'city'='Philadelphia'
+ AND STRPOS(bus.j->>'categories', 'Restaurants') <> 0 
+ AND STRPOS(bus.j->>'categories', 'Fast Food') <> 0
+ ) AS rev_td --review timestamp to date
+ ON chn_td.business_id = rev_td.business_id
+
+
+-- =======================
+-- Check total reviews
+-- =======================
+
+SELECT sub.city AS city, COUNT(sub.city) AS total_reviews_city
+FROM 
+	(SELECT bus.j->>'city' AS city , bus.j->>'categories' AS categories, bus.j->>'is_open' AS is_open
+	 FROM public.business AS bus
+	 INNER JOIN public.review AS rev
+	 ON bus.j->>'business_id' = rev.j->>'business_id'
+	) AS sub
+WHERE sub.is_open = '1' AND sub.categories LIKE '%Fast Food%' 
+GROUP BY city
+ORDER BY total_reviews_city DESC;
+
+-- =======================
+-- Key performance indicator extraction (KPI)
+-- =======================
+
+SELECT b.business_id,
+       b.name,
+       AVG(b.stars) AS business_rating,   
+       AVG(b.review_count) AS review_count,
+       COUNT(r.text) AS tips_count,  
+       AVG(t.compliment_count) AS compliment_count,  
+       AVG( cardinality(string_to_array(ch.date, ','))) AS checkin_count,  
+       SUM(CASE WHEN p.label = 'food' THEN 1 ELSE 0 END) AS food_photos,
+       SUM(CASE WHEN p.label = 'drink' THEN 1 ELSE 0 END) AS drink_photos,
+       SUM(CASE WHEN p.label = 'inside' THEN 1 ELSE 0 END) AS inside_photos
+FROM businesstable AS b
+LEFT JOIN phototable AS p ON b.business_id = p.business_id   
+LEFT JOIN reviewtable AS r ON b.business_id = r.business_id  
+INNER JOIN tipstable AS t ON b.business_id = t.business_id  
+LEFT JOIN checkintable AS ch  ON b.business_id = ch.business_id   
+WHERE categories LIKE '%Pizza%' 
+GROUP BY b.business_id, b.name 
+ORDER BY b.name
+ ;
