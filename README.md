@@ -29,7 +29,7 @@ Based on the logistic regression analysis and overall model findings, here are k
 *   **Reconsider Reservations & Delivery (Contextual):** The model suggested negative associations with `restaurantsreservations` and `restaurantsdelivery` regarding *high check-in frequency*. This might imply that for high volume, quick service is preferred, or that these features might attract a different customer segment not captured by the "high check-in" definition. Further investigation here is recommended based on specific business goals.
 
 ## Project Structure
-.
+```
 ├── README.md <- This file.
 ├── LICENSE <- License file (e.g., MIT License).
 ├── .gitignore <- Files/folders to be ignored by Git.
@@ -40,7 +40,7 @@ Based on the logistic regression analysis and overall model findings, here are k
 │ │ └── checkins_and_restaurant_success.ipynb <- Original Jupyter Notebook.
 ├── SQL code/ <- SQL queries for initial data extraction.
 │ └── yelp_philadelphia_fastfood_analysis.sql.txt <- SQL scripts used in PgAdmin.
-.
+```
 ## Data Sources
 
 The analysis relies on a rich dataset derived from Yelp's public dataset and external demographic information:
